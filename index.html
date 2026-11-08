@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hoops Kahoot! - Basketball Legends Quiz</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @keyframes pulse-fast {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    .timer-pulse {
+      animation: pulse-fast 0.6s infinite;
+    }
+    .kahoot-btn {
+      transition: all 0.15s ease-out;
+    }
+    .kahoot-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+    .kahoot-btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+    .confetti {
+      position: absolute;
+      width: 8px;
+      height: 14px;
+      opacity: 0.9;
+      animation: fall 2.5s linear infinite;
+    }
+    @keyframes fall {
+      0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(380px) rotate(720deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body class="bg-transparent text-[var(--foreground)] antialiased p-2 sm:p-4 font-sans select-none">
+  <div id="game-card" class="max-w-2xl mx-auto bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden relative min-h-[460px] flex flex-col justify-between">
+    
+    <!-- Top Game Bar -->
+    <header class="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] bg-purple-900/10">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center font-black text-sm shadow">
+          K!
+        </div>
+        <span class="font-extrabold text-sm tracking-tight text-[var(--foreground)]">HOOPS KAHOOT</span>
+        <span id="streak-badge" class="hidden text-[11px] px-2 py-0.5 rounded-full bg-orange-500 text-white font-bold animate-bounce">
+          🔥 Streak x<span id="streak-count">1</span>
+        </span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="text-right">
+          <span class="text-[10px] uppercase font-bold text-[var(--muted-foreground)] block leading-none">Score</span>
+          <span id="total-score" class="font-mono font-black text-base text-purple-600 dark:text-purple-400">0</span>
+        </div>
+        <button id="sound-toggle" onclick="toggleSound()" class="p-1.5 rounded-lg border border-[var(--border)] hover:bg-black/5 hover:dark:bg-white/10 text-xs">
+          🔊
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTAINER WITH SCREENS -->
+    <main class="flex-1 p-4 sm:p-6 flex flex-col justify-center relative overflow-hidden" id="screen-container">
+      
+      <!-- SCREEN 1: WELCOME / START -->
+      <div id="screen-start" class="text-center space-y-4">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center shadow-lg transform -rotate-3 hover:rotate-0 transition-transform">
+          <span class="text-3xl">🏀</span>
+        </div>
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-black tracking-tight text-[var(--foreground)]">
+            Basketball Legends Quiz
+          </h2>
+          <p class="text-xs sm:text-sm text-[var(--muted-foreground)] mt-1 max-w-md mx-auto">
+            Test your NBA knowledge against the clock! Fast answers earn up to <strong>1,000 points</strong> per question.
+          </p>
+        </div>
+
+        <div class="max-w-xs mx-auto space-y-2 pt-2">
+          <input id="player-name" type="text" placeholder="Enter your Nickname..." value="HoopsFan" class="w-full px-3.5 py-2 rounded-xl text-center font-bold text-sm border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-purple-500 outline-none">
+          <button onclick="startGame()" class="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-sm tracking-wide shadow-lg shadow-purple-600/30 transition-all transform active:scale-95">
+            START GAME ⚡
+          </button>
+        </div>
+
+        <div class="flex justify-center gap-2 pt-1 text-[11px] text-[var(--muted-foreground)] font-medium">
+          <span>8 Questions</span> • <span>15s Timer</span> • <span>Kahoot Scoring</span>
+        </div>
+      </div>
+
+      <!-- SCREEN 2: IN-GAME QUESTION -->
+      <div id="screen-question" class="hidden flex-1 flex flex-col justify-between space-y-3">
+        <!-- Question Meta & Timer -->
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]" id="q-counter">
+            Question 1 of 8
+          </span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-[var(--muted-foreground)]">Time:</span>
+            <div id="timer-badge" class="w-9 h-9 rounded-full bg-purple-600 text-white font-black text-sm flex items-center justify-center shadow">
+              15
+            </div>
+          </div>
+        </div>
+
+        <!-- Timer progress bar -->
+        <div class="w-full bg-[var(--border)] h-2 rounded-full overflow-hidden">
+          <div id="timer-bar" class="h-full bg-purple-500 transition-all duration-100 ease-linear" style="width: 100%;"></div>
+        </div>
+
+        <!-- Question Title -->
+        <div class="min-h-[64px] flex items-center justify-center text-center px-2 py-1">
+          <h3 id="q-text" class="text-base sm:text-lg font-bold text-[var(--foreground)] leading-snug">
+            Question text goes here
+          </h3>
+        </div>
+
+        <!-- 4 Kahoot Geometric Answer Buttons -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+          <!-- Red: Triangle -->
+          <button onclick="pickAnswer(0)" id="btn-opt-0" class="kahoot-btn flex items-center gap-3 p-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-md text-left">
+            <div class="w-6 h-6 flex items-center justify-center text-white shrink-0">
+              <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><polygon points="12 4, 22 20, 2 20"/></svg>
+            </div>
+            <span class="opt-label flex-1 truncate">Option A</span>
+          </button>
+
+          <!-- Blue: Diamond -->
+          <button onclick="pickAnswer(1)" id="btn-opt-1" class="kahoot-btn flex items-center gap-3 p-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-md text-left">
+            <div class="w-6 h-6 flex items-center justify-center text-white shrink-0">
+              <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><polygon points="12 2, 22 12, 12 22, 2 12"/></svg>
+            </div>
+            <span class="opt-label flex-1 truncate">Option B</span>
+          </button>
+
+          <!-- Yellow: Circle -->
+          <button onclick="pickAnswer(2)" id="btn-opt-2" class="kahoot-btn flex items-center gap-3 p-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs sm:text-sm shadow-md text-left">
+            <div class="w-6 h-6 flex items-center justify-center text-black shrink-0">
+              <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+            </div>
+            <span class="opt-label flex-1 truncate">Option C</span>
+          </button>
+
+          <!-- Green: Square -->
+          <button onclick="pickAnswer(3)" id="btn-opt-3" class="kahoot-btn flex items-center gap-3 p-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md text-left">
+            <div class="w-6 h-6 flex items-center justify-center text-white shrink-0">
+              <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </div>
+            <span class="opt-label flex-1 truncate">Option D</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- SCREEN 3: ROUND RESULT (KAHOOT STYLE) -->
+      <div id="screen-result" class="hidden text-center space-y-4 py-3">
+        <div id="result-icon-box" class="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl shadow-xl">
+          ✓
+        </div>
+        <div>
+          <h3 id="result-title" class="text-2xl font-black text-[var(--foreground)]">Correct!</h3>
+          <p id="result-pts" class="text-sm font-bold text-emerald-600 mt-0.5">+940 pts</p>
+          <p id="result-detail" class="text-xs text-[var(--muted-foreground)] mt-2 max-w-sm mx-auto px-2">
+            Details about the answer.
+          </p>
+        </div>
+
+        <button onclick="proceedNext()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-transform active:scale-95">
+          Next Question ➔
+        </button>
+      </div>
+
+      <!-- SCREEN 4: FINAL PODIUM -->
+      <div id="screen-podium" class="hidden text-center space-y-4 py-2">
+        <div id="confetti-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+        
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-500 text-white flex items-center justify-center text-2xl shadow-lg animate-bounce">
+          🏆
+        </div>
+        
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-amber-500">Podium Finisher</span>
+          <h2 class="text-2xl sm:text-3xl font-black text-[var(--foreground)]" id="podium-player">
+            HoopsFan
+          </h2>
+          <div class="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-600/10 border border-purple-600/20 text-purple-600 font-mono font-black text-lg">
+            <span id="final-total">0</span> PTS
+          </div>
+        </div>
+
+        <!-- Stats breakdown -->
+        <div class="grid grid-cols-3 gap-2 max-w-sm mx-auto text-center pt-2">
+          <div class="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-[var(--border)]">
+            <div class="text-sm font-bold text-emerald-500" id="stat-correct">0/8</div>
+            <div class="text-[10px] text-[var(--muted-foreground)]">Accuracy</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-[var(--border)]">
+            <div class="text-sm font-bold text-orange-500" id="stat-streak">0</div>
+            <div class="text-[10px] text-[var(--muted-foreground)]">Max Streak</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-[var(--border)]">
+            <div class="text-sm font-bold text-purple-500" id="stat-rank">1st</div>
+            <div class="text-[10px] text-[var(--muted-foreground)]">Rank</div>
+          </div>
+        </div>
+
+        <button onclick="restartGame()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-wide shadow-lg transition-transform active:scale-95">
+          Play Again ↺
+        </button>
+      </div>
+
+    </main>
+
+    <!-- Footer Bar -->
+    <footer class="px-4 py-2 border-t border-[var(--border)] bg-black/5 dark:bg-white/5 flex items-center justify-between text-[11px] text-[var(--muted-foreground)]">
+      <span>🏀 English Basketball Quiz</span>
+      <span class="font-mono">Created with Antigravity</span>
+    </footer>
+
+  </div>
+
+  <script>
+    // Quiz Questions Data (Basketball Legends)
+    const questions = [
+      {
+        question: "Which player is the NBA's all-time leading scorer with over 40,000 career points?",
+        options: ["Michael Jordan", "LeBron James", "Kobe Bryant", "Kareem Abdul-Jabbar"],
+        correct: 1,
+        detail: "LeBron James surpassed Kareem Abdul-Jabbar in 2023 and became the first player to pass 40,000 points!"
+      },
+      {
+        question: "Who is universally celebrated as the greatest 3-point shooter in NBA history?",
+        options: ["Stephen Curry", "Klay Thompson", "Ray Allen", "Damian Lillard"],
+        correct: 0,
+        detail: "Steph Curry has hit over 3,700 three-pointers and revolutionized modern basketball spacing."
+      },
+      {
+        question: "Which Lakers legend was nicknamed 'The Black Mamba' and scored 81 points in a 2006 game?",
+        options: ["Shaquille O'Neal", "Allen Iverson", "Kobe Bryant", "Tracy McGrady"],
+        correct: 2,
+        detail: "Kobe Bryant's 81-point performance against Toronto is the 2nd highest in NBA single-game history."
+      },
+      {
+        question: "Which superstar led the Chicago Bulls to 6 NBA Championships in the 1990s without losing a Finals?",
+        options: ["Magic Johnson", "Michael Jordan", "Scottie Pippen", "Dwyane Wade"],
+        correct: 1,
+        detail: "Michael Jordan went 6-for-6 in the NBA Finals and won Finals MVP in all 6 championships."
+      },
+      {
+        question: "Which dominant power forward is nicknamed 'The Greek Freak' and won the 2021 NBA Championship?",
+        options: ["Giannis Antetokounmpo", "Luka Dončić", "Nikola Jokić", "Dirk Nowitzki"],
+        correct: 0,
+        detail: "Giannis Antetokounmpo scored 50 points in Game 6 of the 2021 Finals to win Milwaukee's title."
+      },
+      {
+        question: "Which Serbian center won 3 MVP awards and led the Denver Nuggets to their first title in 2023?",
+        options: ["Joel Embiid", "Nikola Jokić", "Domantas Sabonis", "Pau Gasol"],
+        correct: 1,
+        detail: "Nikola Jokić is known for his unmatched triple-double passing wizardry and playoff dominance."
+      },
+      {
+        question: "Who famously scored 100 points in a single NBA game on March 2, 1962?",
+        options: ["Bill Russell", "Wilt Chamberlain", "Elgin Baylor", "Larry Bird"],
+        correct: 1,
+        detail: "Wilt Chamberlain's 100-point game for the Philadelphia Warriors remains one of sport's unbreakable records."
+      },
+      {
+        question: "Which legendary point guard led the 'Showtime' Lakers and had an iconic rivalry with Larry Bird?",
+        options: ["John Stockton", "Isiah Thomas", "Magic Johnson", "Steve Nash"],
+        correct: 2,
+        detail: "Earvin 'Magic' Johnson won 5 NBA titles with his dazzling fast-break passes and no-look assists."
+      }
+    ];
+
+    // State
+    let currentIdx = 0;
+    let score = 0;
+    let streak = 0;
+    let maxStreak = 0;
+    let correctCount = 0;
+    let timeLeft = 15;
+    let timerInterval = null;
+    let soundEnabled = true;
+    let audioCtx = null;
+
+    // Web Audio Sound FX Synthesizer
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+        if (type === 'correct') {
+          // Cheerful high arpeggio
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+          osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+          osc.frequency.setValueAtTime(1046.50, now + 0.24); // C6
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+          osc.start(now);
+          osc.stop(now + 0.5);
+        } else if (type === 'wrong') {
+          // Low buzz
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.setValueAtTime(110, now + 0.12);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        } else if (type === 'tick') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          gain.gain.setValueAtTime(0.05, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        } else if (type === 'fanfare') {
+          // Victory chord
+          [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'triangle';
+            o.frequency.setValueAtTime(freq, now + (i * 0.08));
+            g.connect(ctx.destination);
+            o.connect(g);
+            g.gain.setValueAtTime(0.15, now + (i * 0.08));
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+            o.start(now + (i * 0.08));
+            o.stop(now + 0.8);
+          });
+        }
+      } catch (e) {
+        // Audio policy or unsupported
+      }
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('sound-toggle').innerText = soundEnabled ? '🔊' : '🔇';
+    }
+
+    function setScreen(screenName) {
+      document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('screen-question').classList.add('hidden');
+      document.getElementById('screen-result').classList.add('hidden');
+      document.getElementById('screen-podium').classList.add('hidden');
+
+      document.getElementById(`screen-${screenName}`).classList.remove('hidden');
+    }
+
+    function startGame() {
+      currentIdx = 0;
+      score = 0;
+      streak = 0;
+      maxStreak = 0;
+      correctCount = 0;
+      document.getElementById('total-score').innerText = '0';
+      updateStreak();
+      loadQuestion();
+    }
+
+    function updateStreak() {
+      const badge = document.getElementById('streak-badge');
+      const count = document.getElementById('streak-count');
+      if (streak >= 2) {
+        count.innerText = streak;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    function loadQuestion() {
+      setScreen('question');
+      const q = questions[currentIdx];
+      
+      document.getElementById('q-counter').innerText = `Question ${currentIdx + 1} of ${questions.length}`;
+      document.getElementById('q-text').innerText = q.question;
+
+      // Reset options buttons
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById(`btn-opt-${i}`);
+        btn.querySelector('.opt-label').innerText = q.options[i];
+        btn.disabled = false;
+        btn.classList.remove('opacity-40');
+      }
+
+      // Reset timer
+      timeLeft = 15;
+      const timerBadge = document.getElementById('timer-badge');
+      const timerBar = document.getElementById('timer-bar');
+      timerBadge.innerText = timeLeft;
+      timerBadge.classList.remove('timer-pulse', 'bg-red-600');
+      timerBadge.classList.add('bg-purple-600');
+      timerBar.style.width = '100%';
+
+      clearInterval(timerInterval);
+      const totalTime = 15;
+      timerInterval = setInterval(() => {
+        timeLeft -= 0.1;
+        if (timeLeft <= 0) {
+          timeLeft = 0;
+          clearInterval(timerInterval);
+          timeUp();
+        }
+        timerBadge.innerText = Math.ceil(timeLeft);
+        const pct = (timeLeft / totalTime) * 100;
+        timerBar.style.width = `${pct}%`;
+
+        if (timeLeft <= 4) {
+          timerBadge.classList.remove('bg-purple-600');
+          timerBadge.classList.add('bg-red-600', 'timer-pulse');
+          if (Math.round(timeLeft * 10) % 10 === 0) {
+            playSound('tick');
+          }
+        }
+      }, 100);
+    }
+
+    function pickAnswer(selectedIdx) {
+      clearInterval(timerInterval);
+      const q = questions[currentIdx];
+      const isCorrect = (selectedIdx === q.correct);
+
+      // Disable buttons
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById(`btn-opt-${i}`);
+        btn.disabled = true;
+        if (i !== q.correct) {
+          btn.classList.add('opacity-40');
+        }
+      }
+
+      let earnedPoints = 0;
+      if (isCorrect) {
+        correctCount++;
+        streak++;
+        if (streak > maxStreak) maxStreak = streak;
+        // Kahoot scoring: (1 - (timeUsed / totalTime) / 2) * 1000 + streakBonus
+        const timeFraction = (15 - timeLeft) / 15;
+        const speedMultiplier = 1 - (timeFraction / 2);
+        const streakBonus = Math.min(streak * 50, 250);
+        earnedPoints = Math.round((1000 * speedMultiplier) + streakBonus);
+        score += earnedPoints;
+        playSound('correct');
+      } else {
+        streak = 0;
+        playSound('wrong');
+      }
+
+      updateStreak();
+      document.getElementById('total-score').innerText = score;
+
+      // Show result screen
+      setTimeout(() => {
+        showRoundResult(isCorrect, earnedPoints, q);
+      }, 600);
+    }
+
+    function timeUp() {
+      const q = questions[currentIdx];
+      streak = 0;
+      updateStreak();
+      playSound('wrong');
+      showRoundResult(false, 0, q, true);
+    }
+
+    function showRoundResult(isCorrect, pts, q, isTimeUp = false) {
+      setScreen('result');
+      const iconBox = document.getElementById('result-icon-box');
+      const title = document.getElementById('result-title');
+      const ptsLabel = document.getElementById('result-pts');
+      const detail = document.getElementById('result-detail');
+
+      if (isCorrect) {
+        iconBox.className = 'w-16 h-16 mx-auto rounded-full bg-emerald-500 text-white flex items-center justify-center text-3xl shadow-xl';
+        iconBox.innerText = '✓';
+        title.innerText = 'CORRECT!';
+        title.className = 'text-2xl font-black text-emerald-600';
+        ptsLabel.innerText = `+${pts} pts! (Speed Bonus)`;
+        ptsLabel.className = 'text-sm font-bold text-emerald-500 mt-0.5';
+      } else {
+        iconBox.className = 'w-16 h-16 mx-auto rounded-full bg-red-500 text-white flex items-center justify-center text-3xl shadow-xl';
+        iconBox.innerText = '✕';
+        title.innerText = isTimeUp ? "TIME'S UP!" : 'INCORRECT!';
+        title.className = 'text-2xl font-black text-red-600';
+        ptsLabel.innerText = `+0 pts (Answer was: ${q.options[q.correct]})`;
+        ptsLabel.className = 'text-xs font-semibold text-red-500 mt-0.5';
+      }
+
+      detail.innerText = q.detail;
+    }
+
+    function proceedNext() {
+      currentIdx++;
+      if (currentIdx < questions.length) {
+        loadQuestion();
+      } else {
+        showPodium();
+      }
+    }
+
+    function showPodium() {
+      setScreen('podium');
+      playSound('fanfare');
+
+      const name = document.getElementById('player-name').value.trim() || 'HoopsFan';
+      document.getElementById('podium-player').innerText = name;
+      document.getElementById('final-total').innerText = score;
+      document.getElementById('stat-correct').innerText = `${correctCount}/${questions.length}`;
+      document.getElementById('stat-streak').innerText = `${maxStreak}x`;
+
+      const pct = (correctCount / questions.length);
+      let rank = '1st Place 🥇';
+      if (pct < 0.5) rank = 'Bronze 🥉';
+      else if (pct < 0.8) rank = 'Silver 🥈';
+      document.getElementById('stat-rank').innerText = rank;
+
+      // Confetti creation
+      const container = document.getElementById('confetti-container');
+      container.innerHTML = '';
+      const colors = ['#f43f5e', '#3b82f6', '#eab308', '#10b981', '#a855f7'];
+      for (let i = 0; i < 40; i++) {
+        const conf = document.createElement('div');
+        conf.className = 'confetti';
+        conf.style.left = `${Math.random() * 100}%`;
+        conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        conf.style.animationDelay = `${Math.random() * 2}s`;
+        conf.style.animationDuration = `${1.5 + Math.random() * 2}s`;
+        container.appendChild(conf);
+      }
+    }
+
+    function restartGame() {
+      setScreen('start');
+    }
+  </script>
+</body>
+</html>
